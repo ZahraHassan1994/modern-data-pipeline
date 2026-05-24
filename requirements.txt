@@ -1,0 +1,10 @@
+pandas
+numpy
+pyspark
+kafka-python
+apache-airflow
+psycopg2-binary
+great-expectations
+pytest
+flake8
+black
