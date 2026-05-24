@@ -2,29 +2,64 @@ from kafka import KafkaConsumer
 import json
 import pandas as pd
 import os
+import time
+from app.utils.logger import get_logger
 
-os.makedirs("data/bronze", exist_ok=True)
+# Logger
+logger = get_logger("kafka_consumer")
 
+# Ensure directory exists
+BRONZE_PATH = "data/bronze"
+os.makedirs(BRONZE_PATH, exist_ok=True)
+
+FILE_PATH = os.path.join(BRONZE_PATH, "events.csv")
+
+# Kafka Consumer
 consumer = KafkaConsumer(
     'audience-events',
     bootstrap_servers='localhost:9092',
     auto_offset_reset='earliest',
+    enable_auto_commit=True,
+    group_id="audience-consumer-group",
     value_deserializer=lambda x: json.loads(x.decode('utf-8'))
 )
 
-for message in consumer:
+logger.info("Kafka Consumer started... listening to topic")
 
-    data = message.value
+batch = []
+BATCH_SIZE = 10
 
-    df = pd.DataFrame([data])
+try:
+    for message in consumer:
 
-    file_exists = os.path.isfile("data/bronze/events.csv")
+        data = message.value
+        batch.append(data)
 
-    df.to_csv(
-        "data/bronze/events.csv",
-        mode='a',
-        header=not file_exists,
-        index=False
-    )
+        logger.info(f"Consumed event: {data}")
 
-    print(f"Consumed: {data}")
+        # Write in batches (better performance)
+        if len(batch) >= BATCH_SIZE:
+
+            df = pd.DataFrame(batch)
+
+            file_exists = os.path.isfile(FILE_PATH)
+
+            df.to_csv(
+                FILE_PATH,
+                mode='a',
+                header=not file_exists,
+                index=False
+            )
+
+            logger.info(f"Wrote batch of {len(batch)} records to Bronze layer")
+
+            batch.clear()
+
+        time.sleep(0.1)
+
+except Exception as e:
+    logger.error(f"Consumer failed: {str(e)}")
+
+finally:
+    consumer.close()
+    logger.info("Kafka consumer closed safely")

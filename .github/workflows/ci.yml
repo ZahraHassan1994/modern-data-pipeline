@@ -1,34 +1,29 @@
-name: CI Pipeline
+name: Data Pipeline CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-
-  build:
-
+  test:
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: 3.11
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
           pip install -r requirements.txt
 
-      - name: Run Linter
+      - name: Code quality check
         run: |
-          flake8 .
+          flake8 app
 
-      - name: Run Tests
+      - name: Run tests
         run: |
-          pytest
+          pytest tests
